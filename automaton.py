@@ -66,7 +66,7 @@ class Automaton(Thread):
 def clean_exit(signum, frame):
     global SIGEXIT
     SIGEXIT = True
-    LOG.critical("Exit signal received. Exiting at the next sane time. "
+    LOG.critical("Exit signal received. Exiting at the next sane time."
                  "Please stand by.")
 
 
