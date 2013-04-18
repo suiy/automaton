@@ -170,32 +170,6 @@ class Cluster(object):
                         if command_return != 0:
                             LOG.error("Download logs: " + command.stdout)
                             LOG.error("Download logs error: " + command.stderr)
-
-    def download_logs(self):
-        reservations = list()
-        ssh_username = self.config.globals.ssh_username
-        if self.reservations:
-            reservations = self.reservations
-        else:
-            for cloud in self.clouds:
-                reservations = cloud.conn.get_all_instances()
-        for reservation in reservations:
-            for instance in reservation.instances:
-                if self.database.check_benchmark(self.benchmark.name, instance.id):
-                    local_path = os.path.join(self.config.globals.log_local_path, self.benchmark.name, instance.id)
-                    if not os.path.exists(local_path):
-                        os.makedirs(local_path)
-                    for path in self.path:
-                        file_name = os.path.basename(path)
-                        local_path = os.path.join(local_path,file_name)
-                        local_path = local_path+'_'+(datetime.datetime.now()).strftime("%H%M%S")+'_'+instance.instance_type
-                        com = "scp -r "+ssh_username+"@"+instance.public_dns_name+":"+path+" "+local_path
-                        LOG.debug("Download logs: [%s] download %s into %s" % (self.benchmark.name, os.path.basename(path), local_path))
-                        command = Command(com)
-                        command_return = command.execute()
-                        if command_return != 0:
-                            LOG.error("Download logs: "+command.stdout)
-                            LOG.error("Download logs error: "+command.stderr)
     
     def deploy_software(self):
         ssh_priv_key = self.config.globals.ssh_priv_key
