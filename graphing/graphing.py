@@ -8,6 +8,8 @@ class Graph(object):
         self.config = config
         self.parser = Parser(self.config)
         self.graph_path = self.config.globals.graph_path
+        if not os.path.exists(self.graph_path):
+            os.makedirs(self.graph_path)
         self.attributes = list()
         self.attributes = self.parser.instance_types
 

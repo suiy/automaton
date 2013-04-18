@@ -102,55 +102,41 @@ def parse_options():
 
     parser = OptionParser()
 
+    parser = OptionParser()
+
     parser.add_option("-d", "--debug", action="store_true", dest="debug",
                       help="Enable debugging log level.")
     parser.set_defaults(debug=False)
 
-    parser.add_option("-g", "--global_file", action="store",
-                      dest="global_file",
-                      help="Location of the file with global parameters "
-                           "(default: etc/global.conf).")
+    parser.add_option("-g", "--global_file", action="store", dest="global_file",
+                      help="Location of the file with global parameters (default: etc/global.conf).")
     parser.set_defaults(global_file="etc/global.conf")
 
-    parser.add_option("-c", "--clouds_file", action="store",
-                      dest="clouds_file",
-                      help="Location of the file with cloud parameters "
-                           "(default: etc/clouds.conf).")
+    parser.add_option("-c", "--clouds_file", action="store", dest="clouds_file",
+                      help="Location of the file with cloud parameters (default: etc/clouds.conf).")
     parser.set_defaults(clouds_file="etc/clouds.conf")
 
-    parser.add_option("-b", "--benchmarking_file", action="store",
-                      dest="benchmarking_file",
-                      help="Location of the file with benchmarking "
-                           "parameters (default: etc/benchmarking.conf).")
+    parser.add_option("-b", "--benchmarking_file", action="store", dest="benchmarking_file",
+                      help="Location of the file with benchmarking parameters (default: etc/benchmarking.conf).")
     parser.set_defaults(benchmarking_file="etc/benchmarking.conf")
 
-    parser.add_option("-l", "--launch_cluster", action="store_true",
-                      dest="launch_cluster",
-                      help="Launch desired number of clusters")
+    parser.add_option("-l", "--launch_cluster", action="store_true",dest="launch_cluster",help="Launch clusters")
 
-    parser.add_option("-t", "--terminate_cluster", action="store",
-                      dest="terminate_cluster",
-                      help="Terminate specific instance, argument: "
-                           "all/instance_id",
-                      default=False)
+    parser.add_option("-t", "--terminate_cluster", action="store",dest="terminate_cluster",help="Terminate specific instance, arguement: all/instance_id. To check the instance id: automaton.py -i")
+    parser.set_defaults(terminate_cluster="all")
 
-    parser.add_option("-s", "--deploy_software", action="store_true",
-                      dest="deploy_software", help="Deploy Software")
+    parser.add_option("-s", "--deploy_software", action="store_true",dest="deploy_software",help="Deploy Softwares on instances.")
 
-    parser.add_option("-e", "--excute_benchmarks", action="store_true",
-                      dest="excute_benchmarks", help="excute benchmarks")
+    parser.add_option("-e", "--excute_benchmarks", action="store",dest="excute_benchmarks",help="Excute benchmarks with different size dataset, arguement: small/medium/large.")
+    parser.set_defaults(excute_benchmarks="small")
 
-    parser.add_option("-o", "--gather_logs", action="store_true",
-                      dest="gather_logs", help="Gather logs")
+    parser.add_option("-o", "--gather_logs", action="store_true",dest="gather_logs",help="Gather logs from instances.")
 
-    parser.add_option("-p", "--generate_graphs", action="store_true",
-                      dest="generate_graphs",
-                      help="Generate graphs that based on the collected logs")
+    parser.add_option("-p", "--generate_graphs", action="store_true",dest="generate_graphs",help="Generate graphs that based on the collected logs")
 
-    parser.add_option("-i", "--show_id", action="store_true", dest="show_id",
-                      help="show the id of all running instances")
+    parser.add_option("-i", "--show_id", action="store_true",dest="show_id",help="Show the instance id of all running/terminated instances")
     (options, args) = parser.parse_args()
-
+    
     return (options, args)
 
 

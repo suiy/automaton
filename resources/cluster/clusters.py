@@ -171,12 +171,38 @@ class Cluster(object):
                             LOG.error("Download logs: " + command.stdout)
                             LOG.error("Download logs error: " + command.stderr)
 
+    def download_logs(self):
+        reservations = list()
+        ssh_username = self.config.globals.ssh_username
+        if self.reservations:
+            reservations = self.reservations
+        else:
+            for cloud in self.clouds:
+                reservations = cloud.conn.get_all_instances()
+        for reservation in reservations:
+            for instance in reservation.instances:
+                if self.database.check_benchmark(self.benchmark.name, instance.id):
+                    local_path = os.path.join(self.config.globals.log_local_path, self.benchmark.name, instance.id)
+                    if not os.path.exists(local_path):
+                        os.makedirs(local_path)
+                    for path in self.path:
+                        file_name = os.path.basename(path)
+                        local_path = os.path.join(local_path,file_name)
+                        local_path = local_path+'_'+(datetime.datetime.now()).strftime("%H%M%S")+'_'+instance.instance_type
+                        com = "scp -r "+ssh_username+"@"+instance.public_dns_name+":"+path+" "+local_path
+                        LOG.debug("Download logs: [%s] download %s into %s" % (self.benchmark.name, os.path.basename(path), local_path))
+                        command = Command(com)
+                        command_return = command.execute()
+                        if command_return != 0:
+                            LOG.error("Download logs: "+command.stdout)
+                            LOG.error("Download logs error: "+command.stderr)
+    
     def deploy_software(self):
         ssh_priv_key = self.config.globals.ssh_priv_key
         ssh_username = self.config.globals.ssh_username
         ssh_timeout = int(self.config.globals.ssh_timeout)
-        reservations = list()
-        not_available = 0
+        reservations = list()   
+        not_available = 0;
         if self.reservations:
             reservations = self.reservations
         else:
@@ -184,34 +210,46 @@ class Cluster(object):
                 reservations = cloud.conn.get_all_instances()
         for reservation in reservations:
             for instance in reservation.instances:
-                if self.database.check_benchmark(self.benchmark.name,
-                                                 instance.id):
-                    if not check_port_status(instance.ip_address, 22,
-                                             ssh_timeout):
-                        LOG.error("Deploy_software: the port 22 is not "
-                                  "available right now. please try it later")
-                        continue
-                    cmds = list()
+                if self.database.check_benchmark(self.benchmark.name, instance.id):
+                    if not check_port_status(instance.ip_address, 22, ssh_timeout):
+                        LOG.error("Deploy_software: the port 22 is not available right now. please try it later")
+                        continue  
+                    cmds = list() 
+                    cmds.append("rm -rf ~/*")
                     cmds.append("wget %s" % (self.url))
-                    #cmds.append("apt-get update")
-                    #cmds.append("apt-get install unzip")
+                    cmds.append("apt-get update")
+                    cmds.append("apt-get install unzip")
                     cmds.append("unzip BioPerf.zip")
-                    cmds.append("sed -i 's/read BIOPERF/#read "
-                                "BIOPERF/g' install-BioPerf.sh")
+                    cmds.append("sed -i 's/read BIOPERF/#read BIOPERF/g' install-BioPerf.sh")
                     cmds.append("./install-BioPerf.sh")
-                    for c in cmds:
-                        command = RemoteCommand(instance.public_dns_name,
-                                                ssh_priv_key, c)
-                        command_return = command.execute()
-                        if command_return != 0:
-                            LOG.error("Deploy_software: " + command.stdout)
-                            LOG.error("Deploy_software error: " +
-                                      command.stderr)
+                    cmds.append("wget ftp://ftp.cc.gatech.edu/pub/people/bader/BioPerf/swissprot.tar.gz")
+                    cmds.append("tar -xvf swissprot.tar.gz")
+                    cmds.append("mv Swissprot/* .")
+                    cmds.append("wget ftp://ftp.cc.gatech.edu/pub/people/bader/BioPerf/Pfam")
+                    cmds.append("wget ftp://ftp.cc.gatech.edu/pub/people/bader/BioPerf/nr")
+                    cmds.append("sed -i '10 i\DATABASES=~/' ~/.profile")
+                    cmds.append("sed -i '10 i\export DATABASES' ~/.profile")
+                    cmds.append("sed -i '5c input='y'' ~/BioPerf/Scripts/Run-scripts/CleanOutputs.sh")
+                    cmds.append("sed -i '21c #' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append("sed -i '26c #' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append("sed -i '10c arch='X'' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append("sed -i '71c input3='A'' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append('''sed -i "659c ch='Y';" ./BioPerf/Source-codes/Phylip/src/promlk.c''')
+                    cmds.append("sed -i '/scanf/c //' ./BioPerf/Source-codes/Phylip/src/promlk.c")
+                    cmds.append("cd ./BioPerf/Source-codes/Phylip/src;make promlk;cd ~")
+                    cmds.append("mv ./BioPerf/Source-codes/Phylip/src/promlk ./BioPerf/Binaries/x86-Binaries/Phylip")
 
-    def excute_benchmarks(self):
+                    for c in cmds:
+                        command = RemoteCommand(instance.public_dns_name, ssh_priv_key, c)
+                        command_return = command.execute()
+                        if command_return !=0:
+                            LOG.error("Deploy_software: "+command.stdout)
+                            LOG.error("Deploy_software error: "+command.stderr)
+
+    def excute_benchmarks(self,dataset_size):
         ssh_priv_key = self.config.globals.ssh_priv_key
         ssh_username = self.config.globals.ssh_username
-        reservations = list()
+        reservations = list()   
         if self.reservations:
             reservations = self.reservations
         else:
@@ -219,39 +257,30 @@ class Cluster(object):
                 reservations = cloud.conn.get_all_instances()
         for reservation in reservations:
             for instance in reservation.instances:
-                if self.database.check_benchmark(self.benchmark.name,
-                                                 instance.id):
+                if self.database.check_benchmark(self.benchmark.name, instance.id):
                     cmds = list()
-                    cmds.append("sed -i '5c input='y'' ~/BioPerf/Scripts/"
-                                "Run-scripts/CleanOutputs.sh")
-                    cmds.append("sed -i '13c rm -f $BIOPERF/Outputs/log' "
-                                "~/BioPerf/Scripts/Run-scripts/"
-                                "CleanOutputs.sh")
-                    cmds.append("sed -i '21c #' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("sed -i '26c #' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("sed -i '10c arch='X'' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("sed -i '71c input3='A'' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("sed -i '134c input='A'' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("sed -i '145c user1='y'' "
-                                "~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
-                    cmds.append("./BioPerf/Scripts/Run-scripts/"
-                                "CleanOutputs.sh")
-                    cmds.append("echo 'Y' 'Y'|"
-                                "./BioPerf/Scripts/Run-scripts/run-bioperf.sh"
-                                " > ~/BioPerf/Outputs/log")
-
+                    cmds.append("sed -i '13c rm -f $BIOPERF/Outputs/log' ~/BioPerf/Scripts/Run-scripts/CleanOutputs.sh")
+                    cmds.append("sed -i '60c FASTA=0' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append("sed -i '62c GRAPPA=0' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                    cmds.append("./BioPerf/Scripts/Run-scripts/CleanOutputs.sh")
+                    if dataset_size=="large":
+                        #cmds.append("sed -i '134c input='A'' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                        cmds.append("echo C>c;echo H>>c;echo '1'>>c;echo Y>>c")
+                        
+                    elif dataset_size=="medium":
+                        #cmds.append("sed -i '134c input='B'' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                        cmds.append("echo B>c;echo H>>c;echo '1'>>c;echo Y>>c")
+                    else:
+                        #cmds.append("sed -i '134c input='C'' ~/BioPerf/Scripts/Run-scripts/run-bioperf.sh")
+                        cmds.append("echo A>c;echo H>>c;echo '1'>>c;echo Y>>c")
+                    cmds.append("cat c|./BioPerf/Scripts/Run-scripts/run-bioperf.sh > ~/BioPerf/Outputs/log")
+                    
                     for c in cmds:
-                        command = RemoteCommand(instance.public_dns_name,
-                                                ssh_priv_key, c)
+                        command = RemoteCommand(instance.public_dns_name, ssh_priv_key, c)
                         command_return = command.execute()
-                        if command_return != 0:
-                            LOG.error("Excute_benchmarks: " + command.stdout)
-                            LOG.error("Excute_benchmarks: " + command.stderr)
+                        if command_return !=0:
+                            LOG.error("Excute_benchmarks: "+command.stdout)
+                            LOG.error("Excute_benchmarks: "+command.stderr)
 
 
 class Clusters(object):

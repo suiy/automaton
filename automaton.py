@@ -48,7 +48,7 @@ class Automaton(Thread):
                 cluster.launch()
             if self.config.options.terminate_cluster:
                 cluster.connect()
-                if self.config.options.terminate_cluster == "all":
+                if self.config.options.terminate_cluster=="all":
                     cluster.terminate_all()
                 else:
                     cluster.terminate(self.config.options.terminate_cluster)
@@ -60,7 +60,7 @@ class Automaton(Thread):
                 cluster.deploy_software()
             if self.config.options.excute_benchmarks:
                 cluster.connect()
-                cluster.excute_benchmarks()
+                cluster.excute_benchmarks(self.config.options.excute_benchmarks)
 
 
 def clean_exit(signum, frame):
